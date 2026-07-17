@@ -1,0 +1,329 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../providers/calculator_provider.dart';
+
+class LoanComparisonScreen extends StatefulWidget {
+  const LoanComparisonScreen({super.key});
+
+  @override
+  State<LoanComparisonScreen> createState() => _LoanComparisonScreenState();
+}
+
+class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Loan A Controllers
+  final _amountAController = TextEditingController(text: '1000000');
+  final _rateAController = TextEditingController(text: '8.5');
+  final _tenureAController = TextEditingController(text: '120');
+
+  // Loan B Controllers
+  final _amountBController = TextEditingController(text: '1000000');
+  final _rateBController = TextEditingController(text: '7.8');
+  final _tenureBController = TextEditingController(text: '120');
+
+  bool _compared = false;
+
+  // Loan A Results
+  double _emiA = 0.0;
+  double _interestA = 0.0;
+  double _totalA = 0.0;
+
+  // Loan B Results
+  double _emiB = 0.0;
+  double _interestB = 0.0;
+  double _totalB = 0.0;
+
+  // Winner highlights
+  String _winner = '';
+  double _savings = 0.0;
+
+  @override
+  void dispose() {
+    _amountAController.dispose();
+    _rateAController.dispose();
+    _tenureAController.dispose();
+    _amountBController.dispose();
+    _rateBController.dispose();
+    _tenureBController.dispose();
+    super.dispose();
+  }
+
+  void _compareLoans() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final double amountA = double.parse(_amountAController.text);
+    final double rateA = double.parse(_rateAController.text);
+    final int tenureA = int.parse(_tenureAController.text);
+
+    final double amountB = double.parse(_amountBController.text);
+    final double rateB = double.parse(_rateBController.text);
+    final int tenureB = int.parse(_tenureBController.text);
+
+    // Calculate Loan A
+    final double monthlyRateA = rateA / 12 / 100;
+    if (monthlyRateA > 0) {
+      _emiA = (amountA * monthlyRateA * pow(1 + monthlyRateA, tenureA)) /
+          (pow(1 + monthlyRateA, tenureA) - 1);
+    } else {
+      _emiA = amountA / tenureA;
+    }
+    _totalA = _emiA * tenureA;
+    _interestA = _totalA - amountA;
+
+    // Calculate Loan B
+    final double monthlyRateB = rateB / 12 / 100;
+    if (monthlyRateB > 0) {
+      _emiB = (amountB * monthlyRateB * pow(1 + monthlyRateB, tenureB)) /
+          (pow(1 + monthlyRateB, tenureB) - 1);
+    } else {
+      _emiB = amountB / tenureB;
+    }
+    _totalB = _emiB * tenureB;
+    _interestB = _totalB - amountB;
+
+    // Compare
+    if (_totalA < _totalB) {
+      _winner = 'Loan A';
+      _savings = _totalB - _totalA;
+    } else if (_totalB < _totalA) {
+      _winner = 'Loan B';
+      _savings = _totalA - _totalB;
+    } else {
+      _winner = 'Tie';
+      _savings = 0.0;
+    }
+
+    setState(() {
+      _compared = true;
+    });
+
+    // Auto save calculation
+    final provider = Provider.of<CalculatorProvider>(context, listen: false);
+    provider.saveCalculation(
+      type: 'Compare',
+      title: 'Compare: Loan A vs Loan B',
+      inputs: {
+        'loanA_Amount': amountA,
+        'loanA_Rate': rateA,
+        'loanA_Tenure': tenureA,
+        'loanB_Amount': amountB,
+        'loanB_Rate': rateB,
+        'loanB_Tenure': tenureB,
+      },
+      outputs: {
+        'winner': _winner,
+        'savings': _savings,
+        'loanA_EMI': _emiA,
+        'loanB_EMI': _emiB,
+      },
+    );
+  }
+
+  void _reset() {
+    _amountAController.clear();
+    _rateAController.clear();
+    _tenureAController.clear();
+    _amountBController.clear();
+    _rateBController.clear();
+    _tenureBController.clear();
+    setState(() {
+      _compared = false;
+      _winner = '';
+      _savings = 0.0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 0);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Compare Loans', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _reset),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // LOAN A
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          children: [
+                            const Text('Loan A', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _amountAController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _rateAController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'Rate %'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _tenureAController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Tenure (Mo.)'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // LOAN B
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          children: [
+                            const Text('Loan B', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _amountBController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _rateBController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'Rate %'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _tenureBController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Tenure (Mo.)'),
+                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _compareLoans,
+                child: const Text('Compare Loans'),
+              ),
+
+              if (_compared) ...[
+                const SizedBox(height: 24),
+
+                // Winner highlight
+                if (_winner != 'Tie')
+                  Card(
+                    color: Colors.green.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.stars, color: Colors.green, size: 36),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Winner: $_winner',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'You will save ${currencyFormat.format(_savings)} in total payment!',
+                                  style: TextStyle(color: Colors.green.shade800),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text('Both loans are identical in terms of total repayments.', style: TextStyle(color: Colors.grey.shade700)),
+                    ),
+                  ),
+
+                const SizedBox(height: 16),
+
+                // Side by side Comparison Metrics
+                const Text('Comparison Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+
+                Table(
+                  border: TableBorder.all(color: Colors.grey.shade300, width: 1, borderRadius: BorderRadius.circular(8)),
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF1F5F9)),
+                      children: const [
+                        Padding(padding: EdgeInsets.all(12.0), child: Text('Metrics', style: TextStyle(fontWeight: FontWeight.bold))),
+                        Padding(padding: EdgeInsets.all(12.0), child: Text('Loan A', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))),
+                        Padding(padding: EdgeInsets.all(12.0), child: Text('Loan B', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal))),
+                      ],
+                    ),
+                    TableRow(
+                      children: [
+                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Monthly EMI')),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_emiA))),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_emiB))),
+                      ],
+                    ),
+                    TableRow(
+                      children: [
+                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Total Interest')),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_interestA))),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_interestB))),
+                      ],
+                    ),
+                    TableRow(
+                      children: [
+                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Total Payment')),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_totalA))),
+                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_totalB))),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
