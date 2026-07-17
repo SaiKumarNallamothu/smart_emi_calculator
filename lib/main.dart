@@ -4,9 +4,11 @@ import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/calculator_provider.dart';
 import 'features/home/main_layout.dart';
+import 'services/ad_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AdService.instance.initialize();
   runApp(
     MultiProvider(
       providers: [
@@ -17,6 +19,7 @@ void main() {
     ),
   );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -64,12 +67,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Navigate to Main Layout after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
+        AdService.instance.showAppOpenAdIfAvailable();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainLayout()),
         );
       }
     });
+
   }
 
   @override

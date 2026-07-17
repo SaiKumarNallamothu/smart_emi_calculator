@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../services/ad_service.dart';
+
 
 // ==========================================
 // DISCOUNT CALCULATOR SCREEN
@@ -39,27 +41,34 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
     final double savings = price * (discountPercent / 100);
     final double finalPrice = price - savings;
 
-    setState(() {
-      _originalPrice = price;
-      _savings = savings;
-      _finalPrice = finalPrice;
-      _calculated = true;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _originalPrice = price;
+          _savings = savings;
+          _finalPrice = finalPrice;
+          _calculated = true;
+        });
 
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: 'Discount',
-      title: 'Discount: ${discountPercent.toStringAsFixed(0)}% off Rs. ${NumberFormat('#,##,###').format(price)}',
-      inputs: {
-        'originalPrice': price,
-        'discountPercent': discountPercent,
-      },
-      outputs: {
-        'finalPrice': finalPrice,
-        'savings': savings,
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: 'Discount',
+          title: 'Discount: ${discountPercent.toStringAsFixed(0)}% off Rs. ${NumberFormat('#,##,###').format(price)}',
+          inputs: {
+            'originalPrice': price,
+            'discountPercent': discountPercent,
+          },
+          outputs: {
+            'finalPrice': finalPrice,
+            'savings': savings,
+          },
+        );
       },
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -197,39 +206,71 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
   void _calculateTab0() {
     final double x = double.tryParse(_x1Controller.text) ?? 0.0;
     final double y = double.tryParse(_y1Controller.text) ?? 0.0;
-    setState(() {
-      _result1 = (x / 100) * y;
-    });
+    final double res = (x / 100) * y;
+
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _result1 = res;
+        });
+      },
+    );
   }
+
+
 
   void _calculateTab1() {
     final double x = double.tryParse(_x2Controller.text) ?? 0.0;
     final double y = double.tryParse(_y2Controller.text) ?? 0.0;
-    setState(() {
-      _result2 = y > 0 ? (x / y) * 100 : 0.0;
-    });
+    final double res = y > 0 ? (x / y) * 100 : 0.0;
+
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _result2 = res;
+        });
+      },
+    );
   }
+
+
 
   void _calculateTab2() {
     final double initialVal = double.tryParse(_initialController.text) ?? 0.0;
     final double finalVal = double.tryParse(_finalController.text) ?? 0.0;
 
     if (initialVal == 0.0) {
-      setState(() {
-        _result3 = 0.0;
-        _isIncrease = true;
-      });
+      AdService.instance.showInterstitialAd(
+        onAdClosed: () {
+          if (!mounted) return;
+          setState(() {
+            _result3 = 0.0;
+            _isIncrease = true;
+          });
+        },
+      );
       return;
     }
 
     final double change = finalVal - initialVal;
     final double pct = (change / initialVal) * 100;
+    final double res = pct.abs();
+    final bool isInc = change >= 0;
 
-    setState(() {
-      _result3 = pct.abs();
-      _isIncrease = change >= 0;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _result3 = res;
+          _isIncrease = isInc;
+        });
+      },
+    );
   }
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/ad_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -85,6 +86,29 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.video_library, color: Colors.red),
+                  title: const Text('Support Us'),
+                  subtitle: const Text('Watch a short ad to support our developers'),
+                  onTap: () {
+                    AdService.instance.showRewardedAd(
+                      onUserEarnedReward: (ad, reward) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Thank you so much for your support! You earned: ${reward.amount} ${reward.type}'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+
+                      onAdClosed: () {
+                        // Preload the next rewarded ad
+                        AdService.instance.loadRewardedAd();
+                      },
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.privacy_tip, color: Colors.green),
                   title: const Text('Privacy Policy'),
                   onTap: () {
@@ -94,6 +118,7 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+
 
           _buildSectionHeader('Info'),
           const Card(

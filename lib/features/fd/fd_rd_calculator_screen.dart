@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../services/ad_service.dart';
+
 
 class FdRdCalculatorScreen extends StatefulWidget {
   final bool isFd;
@@ -39,18 +41,19 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
     final double rate = double.parse(_rateController.text);
     final double years = double.parse(_tenureController.text);
 
+    double investedAmount = 0.0;
+    double interestEarned = 0.0;
+    double maturityAmount = 0.0;
+
     if (widget.isFd) {
       // FD - Compounded Quarterly: A = P * (1 + r/400)^(4 * t)
       final double principal = deposit;
       final double A = principal * pow(1 + (rate / 400), 4 * years);
       final double interest = A - principal;
 
-      setState(() {
-        _investedAmount = principal;
-        _interestEarned = interest;
-        _maturityAmount = A;
-        _calculated = true;
-      });
+      investedAmount = principal;
+      interestEarned = interest;
+      maturityAmount = A;
     } else {
       // RD - Compounded Quarterly formula for recurring monthly deposit
       final int months = (years * 12).round();
@@ -66,30 +69,41 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
       final double invested = deposit * months;
       final double interest = totalMaturity - invested;
 
-      setState(() {
-        _investedAmount = invested;
-        _interestEarned = interest;
-        _maturityAmount = totalMaturity;
-        _calculated = true;
-      });
+      investedAmount = invested;
+      interestEarned = interest;
+      maturityAmount = totalMaturity;
     }
 
-    // Auto save calculation
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: widget.isFd ? 'FD' : 'RD',
-      title: '${widget.isFd ? 'FD' : 'RD'} - Rs. ${NumberFormat('#,##,###').format(deposit)} @ $rate%',
-      inputs: {
-        'deposit': deposit,
-        'interestRate': rate,
-        'tenureYears': years,
-      },
-      outputs: {
-        'interestEarned': _interestEarned,
-        'maturityAmount': _maturityAmount,
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _investedAmount = investedAmount;
+          _interestEarned = interestEarned;
+          _maturityAmount = maturityAmount;
+          _calculated = true;
+        });
+
+        // Auto save calculation
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: widget.isFd ? 'FD' : 'RD',
+          title: '${widget.isFd ? 'FD' : 'RD'} - Rs. ${NumberFormat('#,##,###').format(deposit)} @ $rate%',
+          inputs: {
+            'deposit': deposit,
+            'interestRate': rate,
+            'tenureYears': years,
+          },
+          outputs: {
+            'interestEarned': interestEarned,
+            'maturityAmount': maturityAmount,
+          },
+        );
       },
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -195,11 +209,13 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
 
   Widget _buildResultCard(String title, String value, Color color) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: color, width: 4)),
         ),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

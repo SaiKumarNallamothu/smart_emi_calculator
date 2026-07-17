@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../services/ad_service.dart';
+
 
 class LoanComparisonScreen extends StatefulWidget {
   const LoanComparisonScreen({super.key});
@@ -64,63 +66,82 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
 
     // Calculate Loan A
     final double monthlyRateA = rateA / 12 / 100;
+    double emiA = 0.0;
     if (monthlyRateA > 0) {
-      _emiA = (amountA * monthlyRateA * pow(1 + monthlyRateA, tenureA)) /
+      emiA = (amountA * monthlyRateA * pow(1 + monthlyRateA, tenureA)) /
           (pow(1 + monthlyRateA, tenureA) - 1);
     } else {
-      _emiA = amountA / tenureA;
+      emiA = amountA / tenureA;
     }
-    _totalA = _emiA * tenureA;
-    _interestA = _totalA - amountA;
+    double totalA = emiA * tenureA;
+    double interestA = totalA - amountA;
 
     // Calculate Loan B
     final double monthlyRateB = rateB / 12 / 100;
+    double emiB = 0.0;
     if (monthlyRateB > 0) {
-      _emiB = (amountB * monthlyRateB * pow(1 + monthlyRateB, tenureB)) /
+      emiB = (amountB * monthlyRateB * pow(1 + monthlyRateB, tenureB)) /
           (pow(1 + monthlyRateB, tenureB) - 1);
     } else {
-      _emiB = amountB / tenureB;
+      emiB = amountB / tenureB;
     }
-    _totalB = _emiB * tenureB;
-    _interestB = _totalB - amountB;
+    double totalB = emiB * tenureB;
+    double interestB = totalB - amountB;
 
     // Compare
-    if (_totalA < _totalB) {
-      _winner = 'Loan A';
-      _savings = _totalB - _totalA;
-    } else if (_totalB < _totalA) {
-      _winner = 'Loan B';
-      _savings = _totalA - _totalB;
+    String winner = '';
+    double savings = 0.0;
+    if (totalA < totalB) {
+      winner = 'Loan A';
+      savings = totalB - totalA;
+    } else if (totalB < totalA) {
+      winner = 'Loan B';
+      savings = totalA - totalB;
     } else {
-      _winner = 'Tie';
-      _savings = 0.0;
+      winner = 'Tie';
+      savings = 0.0;
     }
 
-    setState(() {
-      _compared = true;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _emiA = emiA;
+          _interestA = interestA;
+          _totalA = totalA;
+          _emiB = emiB;
+          _interestB = interestB;
+          _totalB = totalB;
+          _winner = winner;
+          _savings = savings;
+          _compared = true;
+        });
 
-    // Auto save calculation
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: 'Compare',
-      title: 'Compare: Loan A vs Loan B',
-      inputs: {
-        'loanA_Amount': amountA,
-        'loanA_Rate': rateA,
-        'loanA_Tenure': tenureA,
-        'loanB_Amount': amountB,
-        'loanB_Rate': rateB,
-        'loanB_Tenure': tenureB,
-      },
-      outputs: {
-        'winner': _winner,
-        'savings': _savings,
-        'loanA_EMI': _emiA,
-        'loanB_EMI': _emiB,
+        // Auto save calculation
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: 'Compare',
+          title: 'Compare: Loan A vs Loan B',
+          inputs: {
+            'loanA_Amount': amountA,
+            'loanA_Rate': rateA,
+            'loanA_Tenure': tenureA,
+            'loanB_Amount': amountB,
+            'loanB_Rate': rateB,
+            'loanB_Tenure': tenureB,
+          },
+          outputs: {
+            'winner': winner,
+            'savings': savings,
+            'loanA_EMI': emiA,
+            'loanB_EMI': emiB,
+          },
+        );
       },
     );
   }
+
+
 
   void _reset() {
     _amountAController.clear();

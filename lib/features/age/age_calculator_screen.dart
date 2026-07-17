@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../services/ad_service.dart';
+
 
 class AgeCalculatorScreen extends StatefulWidget {
   const AgeCalculatorScreen({super.key});
@@ -78,16 +80,23 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
       nextMonths += 12;
     }
 
-    setState(() {
-      _years = years;
-      _months = months;
-      _days = days;
-      _totalDays = totalDays;
-      _nextBdayMonths = nextMonths;
-      _nextBdayDays = nextDays;
-      _calculated = true;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _years = years;
+          _months = months;
+          _days = days;
+          _totalDays = totalDays;
+          _nextBdayMonths = nextMonths;
+          _nextBdayDays = nextDays;
+          _calculated = true;
+        });
+      },
+    );
   }
+
+
 
   Future<void> _selectDob(BuildContext context) async {
     final DateTime? picked = await showDatePicker(

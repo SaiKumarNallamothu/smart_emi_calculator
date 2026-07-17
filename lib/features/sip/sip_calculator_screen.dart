@@ -4,6 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../services/ad_service.dart';
+
 
 class SipCalculatorScreen extends StatefulWidget {
   const SipCalculatorScreen({super.key});
@@ -54,30 +56,37 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
     final double invested = monthlyInvestment * totalMonths;
     final double returns = futureValue - invested;
 
-    setState(() {
-      _investedAmount = invested;
-      _estimatedReturns = returns;
-      _futureValue = futureValue;
-      _calculated = true;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _investedAmount = invested;
+          _estimatedReturns = returns;
+          _futureValue = futureValue;
+          _calculated = true;
+        });
 
-    // Auto save calculation
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: 'SIP',
-      title: 'SIP - Rs. ${NumberFormat('#,##,###').format(monthlyInvestment)}/mo @ $expectedReturn%',
-      inputs: {
-        'monthlyInvestment': monthlyInvestment,
-        'expectedReturn': expectedReturn,
-        'durationYears': years,
-      },
-      outputs: {
-        'investedAmount': invested,
-        'estimatedReturns': returns,
-        'futureValue': futureValue,
+        // Auto save calculation
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: 'SIP',
+          title: 'SIP - Rs. ${NumberFormat('#,##,###').format(monthlyInvestment)}/mo @ $expectedReturn%',
+          inputs: {
+            'monthlyInvestment': monthlyInvestment,
+            'expectedReturn': expectedReturn,
+            'durationYears': years,
+          },
+          outputs: {
+            'investedAmount': invested,
+            'estimatedReturns': returns,
+            'futureValue': futureValue,
+          },
+        );
       },
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -231,11 +240,13 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
 
   Widget _buildResultCard(String title, String value, Color color) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: color, width: 4)),
         ),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

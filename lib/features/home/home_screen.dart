@@ -9,6 +9,8 @@ import '../fd/fd_rd_calculator_screen.dart';
 import '../gst/gst_calculator_screen.dart';
 import '../discount/discount_percentage_screens.dart';
 import '../age/age_calculator_screen.dart';
+import '../../services/ad_service.dart';
+
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -365,30 +367,12 @@ class HomeScreen extends StatelessWidget {
             SliverPadding(
               padding: const EdgeInsets.all(20),
               sliver: SliverToBoxAdapter(
-                child: Container(
-                  height: 60,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardTheme.color,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  ),
-                  child: Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.ad_units, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Advertisement Banner Placeholder',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
+                child: Center(
+                  child: AdBannerWidget(),
                 ),
               ),
             ),
+
           ],
         ),
       ),

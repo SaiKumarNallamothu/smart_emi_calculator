@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../services/ad_service.dart';
+
 
 class GstCalculatorScreen extends StatefulWidget {
   const GstCalculatorScreen({super.key});
@@ -49,30 +51,41 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
       finalAmt = original;
     }
 
-    setState(() {
-      _originalAmount = _addGst ? amount : finalAmt;
-      _gstAmount = gst;
-      _finalAmount = _addGst ? finalAmt : amount;
-      _calculated = true;
-    });
+    final double originalAmount = _addGst ? amount : finalAmt;
+    final double gstAmount = gst;
+    final double finalAmount = _addGst ? finalAmt : amount;
 
-    // Auto save calculation
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: 'GST',
-      title: 'GST (${_addGst ? '+' : '-'}${_selectedRate.toStringAsFixed(0)}%) on Rs. ${NumberFormat('#,##,###').format(amount)}',
-      inputs: {
-        'initialAmount': amount,
-        'rate': _selectedRate,
-        'mode': _addGst ? 'Add GST' : 'Remove GST',
-      },
-      outputs: {
-        'originalAmount': _originalAmount,
-        'gstAmount': _gstAmount,
-        'finalAmount': _finalAmount,
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _originalAmount = originalAmount;
+          _gstAmount = gstAmount;
+          _finalAmount = finalAmount;
+          _calculated = true;
+        });
+
+        // Auto save calculation
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: 'GST',
+          title: 'GST (${_addGst ? '+' : '-'}${_selectedRate.toStringAsFixed(0)}%) on Rs. ${NumberFormat('#,##,###').format(amount)}',
+          inputs: {
+            'initialAmount': amount,
+            'rate': _selectedRate,
+            'mode': _addGst ? 'Add GST' : 'Remove GST',
+          },
+          outputs: {
+            'originalAmount': originalAmount,
+            'gstAmount': gstAmount,
+            'finalAmount': finalAmount,
+          },
+        );
       },
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {

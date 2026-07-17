@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/calculator_provider.dart';
 import '../../services/pdf_service.dart';
+import '../../services/ad_service.dart';
+
 
 class EmiCalculatorScreen extends StatefulWidget {
   const EmiCalculatorScreen({super.key});
@@ -82,33 +84,40 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
       balanceTrend.add(remainingBalance);
     }
 
-    setState(() {
-      _monthlyEmi = emi;
-      _totalInterest = totalInt;
-      _totalPayment = principal + totalInt;
-      _balanceTrend = balanceTrend;
-      _calculated = true;
-    });
+    AdService.instance.showInterstitialAd(
+      onAdClosed: () {
+        if (!mounted) return;
+        setState(() {
+          _monthlyEmi = emi;
+          _totalInterest = totalInt;
+          _totalPayment = principal + totalInt;
+          _balanceTrend = balanceTrend;
+          _calculated = true;
+        });
 
-    // Save calculation auto to DB
-    final provider = Provider.of<CalculatorProvider>(context, listen: false);
-    provider.saveCalculation(
-      type: 'EMI',
-      title: 'EMI - Rs. ${NumberFormat('#,##,###').format(principal)} @ ${annualRate.toStringAsFixed(1)}%',
-      inputs: {
-        'loanAmount': principal,
-        'interestRate': annualRate,
-        'tenureMonths': months,
-        'processingFee': double.tryParse(_feeController.text) ?? 0.0,
-        'extraMonthlyPayment': extra,
-      },
-      outputs: {
-        'monthlyEmi': emi,
-        'totalInterest': totalInt,
-        'totalPayment': principal + totalInt,
+        // Save calculation auto to DB
+        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        provider.saveCalculation(
+          type: 'EMI',
+          title: 'EMI - Rs. ${NumberFormat('#,##,###').format(principal)} @ ${annualRate.toStringAsFixed(1)}%',
+          inputs: {
+            'loanAmount': principal,
+            'interestRate': annualRate,
+            'tenureMonths': months,
+            'processingFee': double.tryParse(_feeController.text) ?? 0.0,
+            'extraMonthlyPayment': extra,
+          },
+          outputs: {
+            'monthlyEmi': emi,
+            'totalInterest': totalInt,
+            'totalPayment': principal + totalInt,
+          },
+        );
       },
     );
   }
+
+
 
   void _reset() {
     _amountController.text = '';
@@ -136,6 +145,10 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _reset),
         ],
       ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
+      ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         physics: const BouncingScrollPhysics(),
@@ -435,11 +448,13 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
   Widget _buildResultCard(String title, String value, Color color) {
     return Card(
       elevation: 1,
+      clipBehavior: Clip.antiAlias,
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: color, width: 4)),
         ),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
