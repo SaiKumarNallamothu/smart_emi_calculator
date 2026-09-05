@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.saprainnovations.smart_emi_calculator">
     <application
         android:label="Smart EMI Calculator"
         android:name="${applicationName}"
