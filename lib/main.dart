@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/calculator_provider.dart';
+import 'providers/currency_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'features/home/main_layout.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'services/ad_service.dart';
 
 void main() async {
@@ -14,6 +17,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => CalculatorProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
       ],
       child: const MyApp(),
     ),
@@ -31,8 +35,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Smart EMI Calculator',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.getLightTheme(null),
+      darkTheme: AppTheme.getDarkTheme(null),
       themeMode: themeProvider.themeMode,
       home: const SplashScreen(),
     );
@@ -64,13 +68,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    // Navigate to Main Layout after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
+    // Navigate after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () async {
+      final prefs = await SharedPreferences.getInstance();
+      final hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+
       if (mounted) {
-        AdService.instance.showAppOpenAdIfAvailable();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainLayout()),
+          MaterialPageRoute(
+            builder: (context) => hasCompletedOnboarding ? const MainLayout() : const OnboardingScreen(),
+          ),
         );
       }
     });

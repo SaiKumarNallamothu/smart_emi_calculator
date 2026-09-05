@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/ad_service.dart';
 
 
@@ -22,6 +23,7 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
   final _tenureController = TextEditingController(text: '5');
 
   bool _calculated = false;
+  bool _isLoading = false;
   double _investedAmount = 0.0;
   double _interestEarned = 0.0;
   double _maturityAmount = 0.0;
@@ -34,8 +36,10 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
     super.dispose();
   }
 
-  void _calculate() {
+  void _calculate() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double deposit = double.parse(_depositController.text);
     final double rate = double.parse(_rateController.text);
@@ -82,6 +86,7 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
           _interestEarned = interestEarned;
           _maturityAmount = maturityAmount;
           _calculated = true;
+          _isLoading = false;
         });
 
         // Auto save calculation
@@ -107,7 +112,8 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 0);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat();
 
     return Scaffold(
       appBar: AppBar(
@@ -128,9 +134,10 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
                       TextFormField(
                         controller: _depositController,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
                           labelText: widget.isFd ? 'FD Deposit Amount' : 'RD Monthly Deposit',
-                          prefixIcon: const Icon(Icons.currency_rupee),
+                          prefixText: '${currencyProvider.symbol} ',
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                       ),
@@ -138,6 +145,7 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
                       TextFormField(
                         controller: _rateController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Interest Rate (% P.A.)',
                           prefixIcon: Icon(Icons.percent),
@@ -148,6 +156,7 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
                       TextFormField(
                         controller: _tenureController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(
                           labelText: 'Tenure (Years)',
                           prefixIcon: Icon(Icons.calendar_today),
@@ -156,8 +165,14 @@ class _FdRdCalculatorScreenState extends State<FdRdCalculatorScreen> {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: _calculate,
-                        child: const Text('Calculate Maturity'),
+                        onPressed: _isLoading ? null : _calculate,
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Calculate Maturity'),
                       ),
                     ],
                   ),

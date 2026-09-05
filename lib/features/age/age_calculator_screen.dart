@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/ad_service.dart';
-
 
 class AgeCalculatorScreen extends StatefulWidget {
   const AgeCalculatorScreen({super.key});
@@ -80,23 +78,17 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
       nextMonths += 12;
     }
 
-    AdService.instance.showInterstitialAd(
-      onAdClosed: () {
-        if (!mounted) return;
-        setState(() {
-          _years = years;
-          _months = months;
-          _days = days;
-          _totalDays = totalDays;
-          _nextBdayMonths = nextMonths;
-          _nextBdayDays = nextDays;
-          _calculated = true;
-        });
-      },
-    );
+    if (!mounted) return;
+    setState(() {
+      _years = years;
+      _months = months;
+      _days = days;
+      _totalDays = totalDays;
+      _nextBdayMonths = nextMonths;
+      _nextBdayDays = nextDays;
+      _calculated = true;
+    });
   }
-
-
 
   Future<void> _selectDob(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -134,7 +126,10 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Age Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Age Calculator',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -174,7 +169,10 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
 
             if (_calculated) ...[
               const SizedBox(height: 24),
-              const Text('Age Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Age Details',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
 
               Row(
@@ -196,16 +194,31 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total Days lived', style: TextStyle(color: Colors.grey)),
-                          Text('$_totalDays days', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Total Days lived',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          Text(
+                            '$_totalDays days',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                       const Divider(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Next Birthday in', style: TextStyle(color: Colors.grey)),
-                          Text('$_nextBdayMonths Months, $_nextBdayDays Days', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          const Text(
+                            'Next Birthday in',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          Text(
+                            '$_nextBdayMonths Months, $_nextBdayDays Days',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -234,7 +247,10 @@ class _AgeCalculatorScreenState extends State<AgeCalculatorScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
       ),

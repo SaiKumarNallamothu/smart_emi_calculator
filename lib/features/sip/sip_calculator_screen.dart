@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/ad_service.dart';
 
 
@@ -21,6 +22,7 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
   final _durationController = TextEditingController(text: '10');
 
   bool _calculated = false;
+  bool _isLoading = false;
   double _investedAmount = 0.0;
   double _estimatedReturns = 0.0;
   double _futureValue = 0.0;
@@ -33,8 +35,10 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
     super.dispose();
   }
 
-  void _calculateSip() {
+  void _calculateSip() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double monthlyInvestment = double.parse(_investmentController.text);
     final double expectedReturn = double.parse(_returnController.text);
@@ -64,6 +68,7 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
           _estimatedReturns = returns;
           _futureValue = futureValue;
           _calculated = true;
+          _isLoading = false;
         });
 
         // Auto save calculation
@@ -90,7 +95,8 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 0);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat();
 
     return Scaffold(
       appBar: AppBar(
@@ -111,9 +117,10 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
                       TextFormField(
                         controller: _investmentController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
                           labelText: 'Monthly Investment',
-                          prefixIcon: Icon(Icons.currency_rupee),
+                          prefixText: '${currencyProvider.symbol} ',
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                       ),
@@ -121,6 +128,7 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
                       TextFormField(
                         controller: _returnController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Expected Return Rate (% P.A.)',
                           prefixIcon: Icon(Icons.percent),
@@ -131,6 +139,7 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
                       TextFormField(
                         controller: _durationController,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(
                           labelText: 'Duration (Years)',
                           prefixIcon: Icon(Icons.calendar_today),
@@ -139,8 +148,14 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen> {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: _calculateSip,
-                        child: const Text('Calculate Returns'),
+                        onPressed: _isLoading ? null : _calculateSip,
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Calculate Returns'),
                       ),
                     ],
                   ),

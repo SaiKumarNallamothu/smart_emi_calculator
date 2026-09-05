@@ -4,38 +4,111 @@ import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
 import '../../models/calculation_model.dart';
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  String _searchQuery = '';
+  String _sortBy = 'Date';
 
   @override
   Widget build(BuildContext context) {
     final calcProvider = Provider.of<CalculatorProvider>(context);
     final favorites = calcProvider.favorites;
 
+    // Filter favorites
+    List<CalculationModel> filteredFavorites = favorites.where((item) {
+      final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.type.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesSearch;
+    }).toList();
+
+    // Sort favorites
+    if (_sortBy == 'Type') {
+      filteredFavorites.sort((a, b) => a.type.compareTo(b.type));
+    } else if (_sortBy == 'Title') {
+      filteredFavorites.sort((a, b) => a.title.compareTo(b.title));
+    } else {
+      // default: Date desc
+      filteredFavorites.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Favorites', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: favorites.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.favorite_outline, size: 64, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No favorites pinned yet',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search favorites...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
                   ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: favorites.length,
-              itemBuilder: (context, index) {
-                final item = favorites[index];
-                return Card(
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: _sortBy,
+                  icon: const Icon(Icons.sort),
+                  underline: const SizedBox(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _sortBy = newValue;
+                      });
+                    }
+                  },
+                  items: <String>['Date', 'Type', 'Title']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: filteredFavorites.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.favorite_outline, size: 64, color: Colors.grey.shade400),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty ? 'No favorites pinned yet' : 'No matches found',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () => calcProvider.loadHistory(),
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredFavorites.length,
+                      itemBuilder: (context, index) {
+                        final item = filteredFavorites[index];
+                        return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -79,9 +152,13 @@ class FavoritesScreen extends StatelessWidget {
                       _showDetailsSheet(context, item);
                     },
                   ),
-                );
-              },
-            ),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

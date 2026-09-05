@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../models/calculation_model.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class CalculatorProvider with ChangeNotifier {
   final DBHelper _dbHelper = DBHelper();
   List<CalculationModel> _history = [];
@@ -34,6 +36,10 @@ class CalculatorProvider with ChangeNotifier {
     required Map<String, dynamic> inputs,
     required Map<String, dynamic> outputs,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final autoSave = prefs.getBool('auto_save') ?? true;
+    if (!autoSave) return;
+
     final calc = CalculationModel(
       type: type,
       title: title,

@@ -125,8 +125,16 @@ class AdService {
     );
   }
 
+  int _calculationCount = 0;
+
   /// Shows interstitial ad if available and throttle limit is passed.
   void showInterstitialAd({VoidCallback? onAdClosed}) {
+    _calculationCount++;
+    if (_calculationCount % 5 != 0) {
+      onAdClosed?.call();
+      return;
+    }
+
     // Implement standard throttling (e.g., minimum 20 seconds between ads)
     final now = DateTime.now();
     if (_lastInterstitialShowTime != null &&

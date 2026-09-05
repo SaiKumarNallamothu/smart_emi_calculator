@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/ad_service.dart';
 
 
@@ -20,6 +21,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
   bool _addGst = true; // Add GST or Remove GST
 
   bool _calculated = false;
+  bool _isLoading = false;
   double _originalAmount = 0.0;
   double _gstAmount = 0.0;
   double _finalAmount = 0.0;
@@ -32,8 +34,10 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
     super.dispose();
   }
 
-  void _calculateGst() {
+  void _calculateGst() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double amount = double.parse(_amountController.text);
 
@@ -63,6 +67,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
           _gstAmount = gstAmount;
           _finalAmount = finalAmount;
           _calculated = true;
+          _isLoading = false;
         });
 
         // Auto save calculation
@@ -89,7 +94,8 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat(decimalDigits: 2);
 
     return Scaffold(
       appBar: AppBar(
@@ -112,9 +118,10 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                       TextFormField(
                         controller: _amountController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
                           labelText: 'Amount',
-                          prefixIcon: Icon(Icons.currency_rupee),
+                          prefixText: '${currencyProvider.symbol} ',
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                       ),
@@ -167,8 +174,14 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _calculateGst,
-                        child: const Text('Calculate GST'),
+                        onPressed: _isLoading ? null : _calculateGst,
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Calculate GST'),
                       ),
                     ],
                   ),

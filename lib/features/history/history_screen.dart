@@ -110,9 +110,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filteredHistory.length,
+                : RefreshIndicator(
+                    onRefresh: () => calcProvider.loadHistory(),
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filteredHistory.length,
                     itemBuilder: (context, index) {
                       final item = filteredHistory[index];
                       return Card(
@@ -178,6 +181,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       );
                     },
                   ),
+                ),
           ),
         ],
       ),

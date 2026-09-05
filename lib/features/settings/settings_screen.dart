@@ -2,15 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/ad_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _autoSave = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _autoSave = prefs.getBool('auto_save') ?? true;
+    });
+  }
+
+  Future<void> _toggleAutoSave(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_save', value);
+    setState(() {
+      _autoSave = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -20,6 +51,55 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          // Preferences Section
+          _buildSectionHeader('Preferences'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Auto-save calculations'),
+                  subtitle: const Text('Save history automatically after calculation'),
+                  value: _autoSave,
+                  onChanged: _toggleAutoSave,
+                ),
+              ],
+            ),
+          ),
+          
+          // Currency Section
+          _buildSectionHeader('Currency'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('Indian Rupee (₹)'),
+                  trailing: currencyProvider.symbol == '₹' ? const Icon(Icons.check, color: Colors.blue) : null,
+                  onTap: () => currencyProvider.setCurrency('₹', 'en_IN'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('US Dollar (\$)'),
+                  trailing: currencyProvider.symbol == '\$' ? const Icon(Icons.check, color: Colors.blue) : null,
+                  onTap: () => currencyProvider.setCurrency('\$', 'en_US'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('Euro (€)'),
+                  trailing: currencyProvider.symbol == '€' ? const Icon(Icons.check, color: Colors.blue) : null,
+                  onTap: () => currencyProvider.setCurrency('€', 'en_IE'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('British Pound (£)'),
+                  trailing: currencyProvider.symbol == '£' ? const Icon(Icons.check, color: Colors.blue) : null,
+                  onTap: () => currencyProvider.setCurrency('£', 'en_GB'),
+                ),
+              ],
+            ),
+          ),
+          
           // Theme Section
           _buildSectionHeader('Appearance'),
           Card(
@@ -29,9 +109,7 @@ class SettingsScreen extends StatelessWidget {
                 RadioListTile<ThemeMode>(
                   title: const Text('System Default'),
                   value: ThemeMode.system,
-                  // ignore: deprecated_member_use
                   groupValue: themeProvider.themeMode,
-                  // ignore: deprecated_member_use
                   onChanged: (mode) {
                     if (mode != null) themeProvider.setThemeMode(mode);
                   },
@@ -39,9 +117,7 @@ class SettingsScreen extends StatelessWidget {
                 RadioListTile<ThemeMode>(
                   title: const Text('Light Mode'),
                   value: ThemeMode.light,
-                  // ignore: deprecated_member_use
                   groupValue: themeProvider.themeMode,
-                  // ignore: deprecated_member_use
                   onChanged: (mode) {
                     if (mode != null) themeProvider.setThemeMode(mode);
                   },
@@ -49,9 +125,7 @@ class SettingsScreen extends StatelessWidget {
                 RadioListTile<ThemeMode>(
                   title: const Text('Dark Mode'),
                   value: ThemeMode.dark,
-                  // ignore: deprecated_member_use
                   groupValue: themeProvider.themeMode,
-                  // ignore: deprecated_member_use
                   onChanged: (mode) {
                     if (mode != null) themeProvider.setThemeMode(mode);
                   },

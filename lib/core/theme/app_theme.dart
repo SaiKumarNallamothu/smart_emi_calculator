@@ -3,20 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'colors.dart';
 
 class AppTheme {
-  static ThemeData get lightTheme {
+  static ThemeData getLightTheme(ColorScheme? lightDynamic) {
+    ColorScheme colorScheme = const ColorScheme.light(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      tertiary: AppColors.accent,
+      surface: AppColors.surfaceLight,
+      error: AppColors.error,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: AppColors.textPrimaryLight,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        tertiary: AppColors.accent,
-        surface: AppColors.surfaceLight,
-        error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.textPrimaryLight,
-      ),
+      colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.bgLight,
       textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).copyWith(
         headlineMedium: GoogleFonts.poppins(
@@ -88,20 +90,22 @@ class AppTheme {
   }
 
 
-  static ThemeData get darkTheme {
+  static ThemeData getDarkTheme(ColorScheme? darkDynamic) {
+    ColorScheme colorScheme = const ColorScheme.dark(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      tertiary: AppColors.accent,
+      surface: AppColors.surfaceDark,
+      error: AppColors.error,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: AppColors.textPrimaryDark,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        tertiary: AppColors.accent,
-        surface: AppColors.surfaceDark,
-        error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.textPrimaryDark,
-      ),
+      colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.bgDark,
       textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).copyWith(
         headlineMedium: GoogleFonts.poppins(

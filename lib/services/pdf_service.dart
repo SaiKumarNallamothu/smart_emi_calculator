@@ -5,8 +5,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 class PDFService {
-  static final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 0);
-
   static Future<Uint8List> generateEmiReport({
     required double loanAmount,
     required double interestRate,
@@ -14,6 +12,7 @@ class PDFService {
     required double monthlyEmi,
     required double totalInterest,
     required double totalPayment,
+    required NumberFormat currencyFormat,
     double processingFee = 0.0,
     double extraPayment = 0.0,
   }) async {
@@ -178,6 +177,7 @@ class PDFService {
     required double monthlyEmi,
     required double totalInterest,
     required double totalPayment,
+    required NumberFormat currencyFormat,
     double processingFee = 0.0,
     double extraPayment = 0.0,
   }) async {
@@ -188,10 +188,14 @@ class PDFService {
       monthlyEmi: monthlyEmi,
       totalInterest: totalInterest,
       totalPayment: totalPayment,
+      currencyFormat: currencyFormat,
       processingFee: processingFee,
       extraPayment: extraPayment,
     );
 
-    await Printing.sharePdf(bytes: pdfBytes, filename: 'EMI_Report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await Printing.sharePdf(
+      bytes: pdfBytes, 
+      filename: 'EMI_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
   }
 }

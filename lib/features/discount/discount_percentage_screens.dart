@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
-import '../../services/ad_service.dart';
-
+import '../../providers/currency_provider.dart';
 
 // ==========================================
 // DISCOUNT CALCULATOR SCREEN
@@ -12,7 +11,8 @@ class DiscountCalculatorScreen extends StatefulWidget {
   const DiscountCalculatorScreen({super.key});
 
   @override
-  State<DiscountCalculatorScreen> createState() => _DiscountCalculatorScreenState();
+  State<DiscountCalculatorScreen> createState() =>
+      _DiscountCalculatorScreenState();
 }
 
 class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
@@ -21,6 +21,7 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
   final _discountController = TextEditingController(text: '20');
 
   bool _calculated = false;
+  bool _isLoading = false;
   double _originalPrice = 0.0;
   double _savings = 0.0;
   double _finalPrice = 0.0;
@@ -32,8 +33,10 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
     super.dispose();
   }
 
-  void _calculate() {
+  void _calculate() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double price = double.parse(_priceController.text);
     final double discountPercent = double.parse(_discountController.text);
@@ -41,42 +44,36 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
     final double savings = price * (discountPercent / 100);
     final double finalPrice = price - savings;
 
-    AdService.instance.showInterstitialAd(
-      onAdClosed: () {
-        if (!mounted) return;
-        setState(() {
-          _originalPrice = price;
-          _savings = savings;
-          _finalPrice = finalPrice;
-          _calculated = true;
-        });
+    if (!mounted) return;
+    setState(() {
+      _originalPrice = price;
+      _savings = savings;
+      _finalPrice = finalPrice;
+      _calculated = true;
+      _isLoading = false;
+    });
 
-        final provider = Provider.of<CalculatorProvider>(context, listen: false);
-        provider.saveCalculation(
-          type: 'Discount',
-          title: 'Discount: ${discountPercent.toStringAsFixed(0)}% off Rs. ${NumberFormat('#,##,###').format(price)}',
-          inputs: {
-            'originalPrice': price,
-            'discountPercent': discountPercent,
-          },
-          outputs: {
-            'finalPrice': finalPrice,
-            'savings': savings,
-          },
-        );
-      },
+    final provider = Provider.of<CalculatorProvider>(context, listen: false);
+    provider.saveCalculation(
+      type: 'Discount',
+      title:
+          'Discount: ${discountPercent.toStringAsFixed(0)}% off Rs. ${NumberFormat('#,##,###').format(price)}',
+      inputs: {'originalPrice': price, 'discountPercent': discountPercent},
+      outputs: {'finalPrice': finalPrice, 'savings': savings},
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat(decimalDigits: 2);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discount Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Discount Calculator',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -92,26 +89,38 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
                       TextFormField(
                         controller: _priceController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
                           labelText: 'Original Price',
-                          prefixIcon: Icon(Icons.currency_rupee),
+                          prefixText: '${currencyProvider.symbol} ',
                         ),
-                        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _discountController,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(
                           labelText: 'Discount Percentage (%)',
                           prefixIcon: Icon(Icons.percent),
                         ),
-                        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: _calculate,
-                        child: const Text('Calculate Discount'),
+                        onPressed: _isLoading ? null : _calculate,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Calculate Discount'),
                       ),
                     ],
                   ),
@@ -120,18 +129,32 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
 
               if (_calculated) ...[
                 const SizedBox(height: 24),
-                const Text('Discount Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Discount Details',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        _buildRow('Original Price', currencyFormat.format(_originalPrice)),
+                        _buildRow(
+                          'Original Price',
+                          currencyFormat.format(_originalPrice),
+                        ),
                         const Divider(height: 24),
-                        _buildRow('Total Savings', currencyFormat.format(_savings), color: Colors.green),
+                        _buildRow(
+                          'Total Savings',
+                          currencyFormat.format(_savings),
+                          color: Colors.green,
+                        ),
                         const Divider(height: 24),
-                        _buildRow('Final Price', currencyFormat.format(_finalPrice), isBold: true),
+                        _buildRow(
+                          'Final Price',
+                          currencyFormat.format(_finalPrice),
+                          isBold: true,
+                        ),
                       ],
                     ),
                   ),
@@ -144,7 +167,12 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
     );
   }
 
-  Widget _buildRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _buildRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -154,14 +182,15 @@ class _DiscountCalculatorScreenState extends State<DiscountCalculatorScreen> {
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             fontSize: isBold ? 16 : 14,
-            color: color ?? (isBold ? Theme.of(context).colorScheme.primary : null),
+            color:
+                color ??
+                (isBold ? Theme.of(context).colorScheme.primary : null),
           ),
         ),
       ],
     );
   }
 }
-
 
 // ==========================================
 // PERCENTAGE CALCULATOR SCREEN
@@ -170,11 +199,15 @@ class PercentageCalculatorScreen extends StatefulWidget {
   const PercentageCalculatorScreen({super.key});
 
   @override
-  State<PercentageCalculatorScreen> createState() => _PercentageCalculatorScreenState();
+  State<PercentageCalculatorScreen> createState() =>
+      _PercentageCalculatorScreenState();
 }
 
-class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen> {
-  int _activeTab = 0; // 0: Find X% of Y, 1: What % is X of Y?, 2: % Increase/Decrease
+class _PercentageCalculatorScreenState
+    extends State<PercentageCalculatorScreen> {
+  int _activeTab =
+      0; // 0: Find X% of Y, 1: What % is X of Y?, 2: % Increase/Decrease
+  bool _isLoading = false;
 
   // Tab 0
   final _x1Controller = TextEditingController(text: '10');
@@ -203,54 +236,47 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
     super.dispose();
   }
 
-  void _calculateTab0() {
+  void _calculateTab0() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 200));
     final double x = double.tryParse(_x1Controller.text) ?? 0.0;
     final double y = double.tryParse(_y1Controller.text) ?? 0.0;
     final double res = (x / 100) * y;
 
-    AdService.instance.showInterstitialAd(
-      onAdClosed: () {
-        if (!mounted) return;
-        setState(() {
-          _result1 = res;
-        });
-      },
-    );
+    if (!mounted) return;
+    setState(() {
+      _result1 = res;
+      _isLoading = false;
+    });
   }
 
-
-
-  void _calculateTab1() {
+  void _calculateTab1() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 200));
     final double x = double.tryParse(_x2Controller.text) ?? 0.0;
     final double y = double.tryParse(_y2Controller.text) ?? 0.0;
     final double res = y > 0 ? (x / y) * 100 : 0.0;
 
-    AdService.instance.showInterstitialAd(
-      onAdClosed: () {
-        if (!mounted) return;
-        setState(() {
-          _result2 = res;
-        });
-      },
-    );
+    if (!mounted) return;
+    setState(() {
+      _result2 = res;
+      _isLoading = false;
+    });
   }
 
-
-
-  void _calculateTab2() {
+  void _calculateTab2() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 200));
     final double initialVal = double.tryParse(_initialController.text) ?? 0.0;
     final double finalVal = double.tryParse(_finalController.text) ?? 0.0;
 
     if (initialVal == 0.0) {
-      AdService.instance.showInterstitialAd(
-        onAdClosed: () {
-          if (!mounted) return;
-          setState(() {
-            _result3 = 0.0;
-            _isIncrease = true;
-          });
-        },
-      );
+      if (!mounted) return;
+      setState(() {
+        _result3 = 0.0;
+        _isIncrease = true;
+        _isLoading = false;
+      });
       return;
     }
 
@@ -259,24 +285,22 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
     final double res = pct.abs();
     final bool isInc = change >= 0;
 
-    AdService.instance.showInterstitialAd(
-      onAdClosed: () {
-        if (!mounted) return;
-        setState(() {
-          _result3 = res;
-          _isIncrease = isInc;
-        });
-      },
-    );
+    if (!mounted) return;
+    setState(() {
+      _result3 = res;
+      _isIncrease = isInc;
+      _isLoading = false;
+    });
   }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Percentage Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Percentage Calculator',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: Column(
         children: [
@@ -305,23 +329,49 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
                     children: [
                       TextFormField(
                         controller: _x1Controller,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Percentage (X)', suffixText: '%'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Percentage (X)',
+                          suffixText: '%',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _y1Controller,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Total Value (Y)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Total Value (Y)',
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(onPressed: _calculateTab0, child: const Text('Calculate')),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _calculateTab0,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Calculate'),
+                      ),
                       if (_result1 != null) ...[
                         const Divider(height: 40),
                         Center(
                           child: Text(
                             'Result: ${_result1!.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
                           ),
                         ),
                       ],
@@ -334,23 +384,48 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
                     children: [
                       TextFormField(
                         controller: _x2Controller,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Value (X)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Value (X)',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _y2Controller,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Total Value (Y)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Total Value (Y)',
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(onPressed: _calculateTab1, child: const Text('Calculate')),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _calculateTab1,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Calculate'),
+                      ),
                       if (_result2 != null) ...[
                         const Divider(height: 40),
                         Center(
                           child: Text(
                             'Result: ${_result2!.toStringAsFixed(2)}%',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
                           ),
                         ),
                       ],
@@ -363,17 +438,38 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
                     children: [
                       TextFormField(
                         controller: _initialController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Initial Value'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Initial Value',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _finalController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Final Value'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Final Value',
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(onPressed: _calculateTab2, child: const Text('Calculate')),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _calculateTab2,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Calculate'),
+                      ),
                       if (_result3 != null) ...[
                         const Divider(height: 40),
                         Center(
@@ -406,7 +502,9 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: active ? Theme.of(context).colorScheme.primary : Colors.grey.withOpacity(0.12),
+            color: active
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.withOpacity(0.12),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -431,7 +529,10 @@ class _PercentageCalculatorScreenState extends State<PercentageCalculatorScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const Divider(height: 24),
             ...children,
           ],

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/calculator_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/pdf_service.dart';
 import '../../services/ad_service.dart';
 
@@ -26,6 +27,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
 
   bool _isYears = false;
   bool _calculated = false;
+  bool _isLoading = false;
 
   double _monthlyEmi = 0.0;
   double _totalInterest = 0.0;
@@ -42,8 +44,10 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
     super.dispose();
   }
 
-  void _calculateEmi() {
+  void _calculateEmi() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double principal = double.parse(_amountController.text);
     final double annualRate = double.parse(_rateController.text);
@@ -93,6 +97,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
           _totalPayment = principal + totalInt;
           _balanceTrend = balanceTrend;
           _calculated = true;
+          _isLoading = false;
         });
 
         // Save calculation auto to DB
@@ -136,7 +141,8 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 0);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat();
 
     return Scaffold(
       appBar: AppBar(
@@ -166,9 +172,10 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                       TextFormField(
                         controller: _amountController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
                           labelText: 'Loan Amount (Principal)',
-                          prefixIcon: Icon(Icons.currency_rupee),
+                          prefixText: '${currencyProvider.symbol} ',
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Enter loan amount' : null,
                       ),
@@ -176,6 +183,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                       TextFormField(
                         controller: _rateController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Interest Rate (% P.A.)',
                           prefixIcon: Icon(Icons.percent),
@@ -189,6 +197,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                             child: TextFormField(
                               controller: _tenureController,
                               keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
                               decoration: InputDecoration(
                                 labelText: _isYears ? 'Tenure (Years)' : 'Tenure (Months)',
                                 prefixIcon: const Icon(Icons.calendar_today),
@@ -227,6 +236,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                             child: TextFormField(
                               controller: _feeController,
                               keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
                                 labelText: 'Processing Fee',
                                 prefixIcon: Icon(Icons.payments_outlined),
@@ -238,6 +248,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                             child: TextFormField(
                               controller: _extraController,
                               keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.done,
                               decoration: const InputDecoration(
                                 labelText: 'Extra Monthly Payment',
                                 prefixIcon: Icon(Icons.add_circle_outline),
@@ -248,8 +259,14 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: _calculateEmi,
-                        child: const Text('Calculate EMI'),
+                        onPressed: _isLoading ? null : _calculateEmi,
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Calculate EMI'),
                       ),
                     ],
                   ),
@@ -431,6 +448,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                             totalPayment: _totalPayment,
                             processingFee: double.tryParse(_feeController.text) ?? 0.0,
                             extraPayment: double.tryParse(_extraController.text) ?? 0.0,
+                            currencyFormat: currencyFormat,
                           );
                         },
                       ),

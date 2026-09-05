@@ -1,10 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/calculator_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../services/ad_service.dart';
-
 
 class LoanComparisonScreen extends StatefulWidget {
   const LoanComparisonScreen({super.key});
@@ -27,6 +26,7 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
   final _tenureBController = TextEditingController(text: '120');
 
   bool _compared = false;
+  bool _isLoading = false;
 
   // Loan A Results
   double _emiA = 0.0;
@@ -53,8 +53,10 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
     super.dispose();
   }
 
-  void _compareLoans() {
+  void _compareLoans() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final double amountA = double.parse(_amountAController.text);
     final double rateA = double.parse(_rateAController.text);
@@ -68,7 +70,8 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
     final double monthlyRateA = rateA / 12 / 100;
     double emiA = 0.0;
     if (monthlyRateA > 0) {
-      emiA = (amountA * monthlyRateA * pow(1 + monthlyRateA, tenureA)) /
+      emiA =
+          (amountA * monthlyRateA * pow(1 + monthlyRateA, tenureA)) /
           (pow(1 + monthlyRateA, tenureA) - 1);
     } else {
       emiA = amountA / tenureA;
@@ -80,7 +83,8 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
     final double monthlyRateB = rateB / 12 / 100;
     double emiB = 0.0;
     if (monthlyRateB > 0) {
-      emiB = (amountB * monthlyRateB * pow(1 + monthlyRateB, tenureB)) /
+      emiB =
+          (amountB * monthlyRateB * pow(1 + monthlyRateB, tenureB)) /
           (pow(1 + monthlyRateB, tenureB) - 1);
     } else {
       emiB = amountB / tenureB;
@@ -115,10 +119,14 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
           _winner = winner;
           _savings = savings;
           _compared = true;
+          _isLoading = false;
         });
 
         // Auto save calculation
-        final provider = Provider.of<CalculatorProvider>(context, listen: false);
+        final provider = Provider.of<CalculatorProvider>(
+          context,
+          listen: false,
+        );
         provider.saveCalculation(
           type: 'Compare',
           title: 'Compare: Loan A vs Loan B',
@@ -141,8 +149,6 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
     );
   }
 
-
-
   void _reset() {
     _amountAController.clear();
     _rateAController.clear();
@@ -159,11 +165,15 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 0);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final currencyFormat = currencyProvider.getFormat();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Compare Loans', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Compare Loans',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _reset),
         ],
@@ -184,27 +194,56 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
                         padding: const EdgeInsets.all(12.0),
                         child: Column(
                           children: [
-                            const Text('Loan A', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
+                            const Text(
+                              'Loan A',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.blue,
+                              ),
+                            ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _amountAController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              textInputAction: TextInputAction.next,
+                              decoration: InputDecoration(
+                                labelText: 'Amount',
+                                prefixText: '${currencyProvider.symbol} ',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _rateAController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(labelText: 'Rate %'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Rate %',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _tenureAController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Tenure (Mo.)'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Tenure (Mo.)',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                           ],
                         ),
@@ -220,27 +259,56 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
                         padding: const EdgeInsets.all(12.0),
                         child: Column(
                           children: [
-                            const Text('Loan B', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                            const Text(
+                              'Loan B',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.teal,
+                              ),
+                            ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _amountBController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              textInputAction: TextInputAction.next,
+                              decoration: InputDecoration(
+                                labelText: 'Amount',
+                                prefixText: '${currencyProvider.symbol} ',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _rateBController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(labelText: 'Rate %'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Rate %',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _tenureBController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Tenure (Mo.)'),
-                              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                              textInputAction: TextInputAction.done,
+                              decoration: const InputDecoration(
+                                labelText: 'Tenure (Mo.)',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                           ],
                         ),
@@ -251,8 +319,14 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _compareLoans,
-                child: const Text('Compare Loans'),
+                onPressed: _isLoading ? null : _compareLoans,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Compare Loans'),
               ),
 
               if (_compared) ...[
@@ -264,13 +338,20 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
                     color: Colors.green.shade50,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                      side: BorderSide(
+                        color: Colors.green.shade300,
+                        width: 1.5,
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.stars, color: Colors.green, size: 36),
+                          const Icon(
+                            Icons.stars,
+                            color: Colors.green,
+                            size: 36,
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
@@ -278,12 +359,18 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
                               children: [
                                 Text(
                                   'Winner: $_winner',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade900,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'You will save ${currencyFormat.format(_savings)} in total payment!',
-                                  style: TextStyle(color: Colors.green.shade800),
+                                  style: TextStyle(
+                                    color: Colors.green.shade800,
+                                  ),
                                 ),
                               ],
                             ),
@@ -296,46 +383,107 @@ class _LoanComparisonScreenState extends State<LoanComparisonScreen> {
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text('Both loans are identical in terms of total repayments.', style: TextStyle(color: Colors.grey.shade700)),
+                      child: Text(
+                        'Both loans are identical in terms of total repayments.',
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
                     ),
                   ),
 
                 const SizedBox(height: 16),
 
                 // Side by side Comparison Metrics
-                const Text('Comparison Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Comparison Summary',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 12),
 
                 Table(
-                  border: TableBorder.all(color: Colors.grey.shade300, width: 1, borderRadius: BorderRadius.circular(8)),
+                  border: TableBorder.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   children: [
                     TableRow(
                       decoration: const BoxDecoration(color: Color(0xFFF1F5F9)),
                       children: const [
-                        Padding(padding: EdgeInsets.all(12.0), child: Text('Metrics', style: TextStyle(fontWeight: FontWeight.bold))),
-                        Padding(padding: EdgeInsets.all(12.0), child: Text('Loan A', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))),
-                        Padding(padding: EdgeInsets.all(12.0), child: Text('Loan B', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal))),
+                        Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text(
+                            'Metrics',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text(
+                            'Loan A',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text(
+                            'Loan B',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     TableRow(
                       children: [
-                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Monthly EMI')),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_emiA))),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_emiB))),
+                        const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text('Monthly EMI'),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_emiA)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_emiB)),
+                        ),
                       ],
                     ),
                     TableRow(
                       children: [
-                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Total Interest')),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_interestA))),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_interestB))),
+                        const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text('Total Interest'),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_interestA)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_interestB)),
+                        ),
                       ],
                     ),
                     TableRow(
                       children: [
-                        const Padding(padding: EdgeInsets.all(12.0), child: Text('Total Payment')),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_totalA))),
-                        Padding(padding: const EdgeInsets.all(12.0), child: Text(currencyFormat.format(_totalB))),
+                        const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Text('Total Payment'),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_totalA)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(currencyFormat.format(_totalB)),
+                        ),
                       ],
                     ),
                   ],
